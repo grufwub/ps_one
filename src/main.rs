@@ -3,9 +3,6 @@ extern crate git2;
 extern crate users;
 extern crate termion;
 
-#[macro_use]
-extern crate lazy_static;
-
 use std::env;
 use std::process;
 use git2::{Repository, StatusOptions, StatusShow};
@@ -15,15 +12,18 @@ use termion::{color, style};
 const GIT_CLEAN: &'static str = "✓";
 const GIT_DIRTY: &'static str = "✗";
 
-// PS1 formatting colors + styles
-lazy_static! {
-    static ref RESET_FMT:        String = format!("{}{}", color::Fg(color::Reset), style::Reset);
-    static ref NAME_FMT:         String = format!("{}{}", color::Fg(color::LightGreen), style::Bold);
-    static ref CWD_FMT:          String = format!("{}{}", color::Fg(color::LightBlue), style::Bold);
-    static ref BRANCH_FMT:       String = format!("{}{}", color::Fg(color::LightRed), style::Bold);
-    static ref STATUS_CLEAN_FMT: String = format!("{}{}", color::Fg(color::LightGreen), style::Bold);
-    static ref STATUS_DIRTY_FMT: String = format!("{}{}", color::Fg(color::LightRed), style::Bold);
-}
+// PS1 formatting colors
+const NAME_COLOR:         color::Fg<color::LightGreen> = color::Fg(color::LightGreen);
+const CWD_COLOR:          color::Fg<color::LightBlue>  = color::Fg(color::LightBlue);
+const BRANCH_COLOR:       color::Fg<color::LightRed>   = color::Fg(color::LightRed);
+const STATUS_DIRTY_COLOR: color::Fg<color::LightRed>   = color::Fg(color::LightRed);
+const STATUS_CLEAN_COLOR: color::Fg<color::LightGreen> = color::Fg(color::LightGreen);
+
+// PS1 formatting styles
+const NAME_STYLE:   style::Bold = style::Bold;
+const CWD_STYLE:    style::Bold = style::Bold;
+const BRANCH_STYLE: style::Bold = style::Bold;
+const STATUS_STYLE: style::Bold = style::Bold;
 
 fn get_username() -> Result<String, String> {
     // Get username OsString
@@ -103,17 +103,17 @@ fn get_git_status(cwd_str: &str) -> Option<String> {
     // Create the git status string, check if we are ~DIRTY~
     let mut status_str = String::new();
     if statuses.len() > 0 {
-        status_str.push_str(&STATUS_DIRTY_FMT);
+        status_str.push_str(&format!("{}{}", STATUS_DIRTY_COLOR, STATUS_STYLE));
         status_str.push_str(&GIT_DIRTY);
     } else {
-        status_str.push_str(&STATUS_CLEAN_FMT);
+        status_str.push_str(&format!("{}{}", STATUS_CLEAN_COLOR, STATUS_STYLE));
         status_str.push_str(&GIT_CLEAN);
     }
 
     // Return head name without the preceding 'refs/heads/'
     Some(
         format!(" : {branch_fmt}{branch}{reset_fmt} {status}{reset_fmt}",
-            branch_fmt = BRANCH_FMT.to_string(),
+            branch_fmt = format!("{}{}", BRANCH_COLOR, BRANCH_STYLE),
             branch     = name_str,
             status     = status_str,
             reset_fmt  = format!("{}{}", color::Fg(color::Reset), style::Reset),
@@ -122,9 +122,6 @@ fn get_git_status(cwd_str: &str) -> Option<String> {
 }
 
 fn generate_ps1() -> Result<String, String> {
-    // The terminal reset style ANSI code
-    let reset_fmt = format!("{}{}", style::Reset, color::Fg(color::Reset));
-
     // Get the current username
     let username = get_username()?;
 
@@ -146,12 +143,12 @@ fn generate_ps1() -> Result<String, String> {
     // Return the formatted PS1 string (remember, git_str could be empty!)
     Ok(
         format!("{name_fmt}{name}{reset_fmt} @ {cwd_fmt}{cwd}{reset_fmt}{git_str}\n--> ",
-            name_fmt  = NAME_FMT.to_string(),
+            name_fmt  = format!("{}{}", NAME_COLOR, NAME_STYLE),
             name      = username,
             cwd       = cur_dir,
-            cwd_fmt   = CWD_FMT.to_string(),
+            cwd_fmt   = format!("{}{}", CWD_COLOR, CWD_STYLE),
             git_str   = git_str,
-            reset_fmt = reset_fmt,
+            reset_fmt = format!("{}{}", color::Fg(color::Reset), style::Reset),
         )
     )
 }

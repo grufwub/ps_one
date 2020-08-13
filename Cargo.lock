@@ -249,7 +249,6 @@ version = "0.1.0"
 dependencies = [
  "dirs",
  "git2",
- "lazy_static",
  "termion",
  "users",
 ]
