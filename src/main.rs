@@ -100,7 +100,7 @@ fn get_git_status(cwd_str: &str) -> Option<String> {
         Err(_) => return None,
     };
 
-    // Create the git status string, check if we are ~DIRTY~
+    // Create the git status string --> non-zero statuses length means we are ~DIRTY~
     let mut status_str = String::new();
     if statuses.len() > 0 {
         status_str.push_str(&format!("{}{}", STATUS_DIRTY_COLOR, STATUS_STYLE));
@@ -110,7 +110,7 @@ fn get_git_status(cwd_str: &str) -> Option<String> {
         status_str.push_str(&GIT_CLEAN);
     }
 
-    // Return head name without the preceding 'refs/heads/'
+    // Return formatted git status string
     Some(
         format!(" : {branch_fmt}{branch}{reset_fmt} {status}{reset_fmt}",
             branch_fmt = format!("{}{}", BRANCH_COLOR, BRANCH_STYLE),
@@ -126,26 +126,26 @@ fn generate_ps1() -> Result<String, String> {
     let username = get_username()?;
 
     // Get user's home directory (for setting tilde in cur_dir string)
-    let home_dir = get_home_dir()?;
+    let homedir_str = get_home_dir()?;
 
     // Get the current working directory
-    let mut cur_dir = get_current_dir()?;
+    let mut curdir_str = get_current_dir()?;
 
-    // If current directory is a 
+    // If the current directory is a git repository, get a git status string
     let mut git_str = String::new();
-    if let Some(git_status) = get_git_status(&cur_dir) {
+    if let Some(git_status) = get_git_status(&curdir_str) {
         git_str.push_str(&git_status);
     }
 
     // Format the current directory to shorten $HOME --> ~
-    cur_dir = cur_dir.replace(&home_dir, "~");
+    curdir_str = curdir_str.replace(&homedir_str, "~");
 
     // Return the formatted PS1 string (remember, git_str could be empty!)
     Ok(
         format!("{name_fmt}{name}{reset_fmt} @ {cwd_fmt}{cwd}{reset_fmt}{git_str}\n--> ",
             name_fmt  = format!("{}{}", NAME_COLOR, NAME_STYLE),
             name      = username,
-            cwd       = cur_dir,
+            cwd       = curdir_str,
             cwd_fmt   = format!("{}{}", CWD_COLOR, CWD_STYLE),
             git_str   = git_str,
             reset_fmt = format!("{}{}", color::Fg(color::Reset), style::Reset),
