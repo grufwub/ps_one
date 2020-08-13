@@ -11,7 +11,8 @@ Pros:
 
 - fast
 
-- sexy (subjective)
+- sexy `subjective. not everyone is aroused by code, and we call them
+  cowards`
 
 Cons:
 
