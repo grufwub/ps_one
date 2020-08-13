@@ -1,3 +1,6 @@
-A simple terminal PS1 variable generator in Rust.
+A simple terminal PS1 variable generator with git status support in Rust.
 
-With mksh setting `export PS1='$(ps_one)'` in `.mkshrc` should work fine
+Simply add to your to your `.bashrc`/`.mkshrc`/`whatever`:
+```
+export PS1='$(ps_one)'
+```
