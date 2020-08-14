@@ -72,7 +72,7 @@ fn get_home_dir() -> Result<String, String> {
 
 fn get_git_status(cwd_str: &str) -> Option<String> {
     // Try open the repo at current directory
-    let repo = match Repository::open(cwd_str) {
+    let repo = match Repository::discover(cwd_str) {
         Ok(r) => r,
         Err(_) => return None,
     };
