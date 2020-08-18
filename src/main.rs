@@ -153,6 +153,15 @@ fn generate_ps1() -> Result<String, String> {
     )
 }
 
+fn backup_prompt() -> String {
+    let mut prompt = String::new();
+    if let Ok(pwd) = env::var("PWD") {
+        prompt.push_str(&pwd);
+    };
+    prompt.push_str(" ~ ");
+    return prompt;
+}
+
 fn main() {
     match generate_ps1() {
         Ok(ps1_str) => {
@@ -161,7 +170,8 @@ fn main() {
         },
 
         Err(err_str) => {
-            print!("{}\n", err_str);
+            println!("$PS1 ERROR: {}", err_str);
+            println!("{}", backup_prompt());
             process::exit(1);
         },
     };
