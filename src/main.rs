@@ -40,6 +40,13 @@ fn get_username() -> Result<String, String> {
     }
 }
 
+fn get_username_backup() -> String {
+    match env::var("USER") {
+        Ok(name) => name,
+        Err(_)           => "unknown".to_string(),
+    }
+}
+
 fn get_current_dir() -> Result<String, String> {
     // Try to get current dir
     let current_dir = match env::current_dir() {
@@ -52,6 +59,13 @@ fn get_current_dir() -> Result<String, String> {
         Ok(current_dir_str.to_string())
     } else {
         Err(String::from("Failed to get current dir"))
+    }
+}
+
+fn get_current_dir_backup() -> String {
+    match env::var("PWD") {
+        Ok(pwd) => pwd,
+        Err(_)          => "".to_string(),
     }
 }
 
@@ -121,15 +135,35 @@ fn get_git_status(cwd_str: &str) -> Option<String> {
     )
 }
 
-fn generate_ps1() -> Result<String, String> {
+fn generate_ps1() -> String {
     // Get the current username
-    let username = get_username()?;
+    //let username = get_username()?;
+    // Try get current username, else print error and use empty
+    let username = match get_username() {
+        Ok(name) => name,
+        Err(err) => {
+            println!("$PS1 ERROR: {}. Using backup method", err);
+            get_username_backup()
+        },
+    };
 
-    // Get user's home directory (for setting tilde in cur_dir string)
-    let homedir_str = get_home_dir()?;
+    // Try get current directory, else print error and use empty
+    let homedir_str = match get_home_dir() {
+        Ok(home) => home,
+        Err(err) => {
+            println!("$PS1 ERROR: {}", err);
+            "".to_string()
+        }
+    };
 
-    // Get the current working directory
-    let mut curdir_str = get_current_dir()?;
+    // Try get current directory, else print the error and use backup method
+    let mut curdir_str = match get_current_dir() {
+        Ok(cwd)  => cwd,
+        Err(err) => {
+            println!("$PS1 ERROR: {}. Using backup method", err);
+            get_current_dir_backup()
+        },
+    };
 
     // If the current directory is a git repository, get a git status string
     let mut git_str = String::new();
@@ -141,38 +175,17 @@ fn generate_ps1() -> Result<String, String> {
     curdir_str = curdir_str.replace(&homedir_str, "~");
 
     // Return the formatted PS1 string (remember, git_str could be empty!)
-    Ok(
-        format!("{name_fmt}{name}{reset_fmt} @ {cwd_fmt}{cwd}{reset_fmt}{git_str}\n--> ",
-            name_fmt  = format!("{}{}", NAME_COLOR, NAME_STYLE),
-            name      = username,
-            cwd       = curdir_str,
-            cwd_fmt   = format!("{}{}", CWD_COLOR, CWD_STYLE),
-            git_str   = git_str,
-            reset_fmt = format!("{}{}", color::Fg(color::Reset), style::Reset),
-        )
+    format!("{name_fmt}{name}{reset_fmt} @ {cwd_fmt}{cwd}{reset_fmt}{git_str}\n--> ",
+        name_fmt  = format!("{}{}", NAME_COLOR, NAME_STYLE),
+        name      = username,
+        cwd       = curdir_str,
+        cwd_fmt   = format!("{}{}", CWD_COLOR, CWD_STYLE),
+        git_str   = git_str,
+        reset_fmt = format!("{}{}", color::Fg(color::Reset), style::Reset),
     )
 }
 
-fn backup_prompt() -> String {
-    let mut prompt = String::new();
-    if let Ok(pwd) = env::var("PWD") {
-        prompt.push_str(&pwd);
-    };
-    prompt.push_str(" ~ ");
-    return prompt;
-}
-
 fn main() {
-    match generate_ps1() {
-        Ok(ps1_str) => {
-            print!("{}", ps1_str);
-            process::exit(0);
-        },
-
-        Err(err_str) => {
-            println!("$PS1 ERROR: {}", err_str);
-            println!("{}", backup_prompt());
-            process::exit(1);
-        },
-    };
+    print!("{}", generate_ps1());
+    process::exit(0);
 }
