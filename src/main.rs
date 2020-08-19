@@ -1,6 +1,5 @@
 extern crate dirs;
 extern crate git2;
-extern crate users;
 
 use std::env;
 use std::process;
@@ -70,17 +69,15 @@ macro_rules! format_status {
 }
 
 fn get_username<'a>() -> Result<String, &'a str> {
-    // Get username OsString
-    let username = match users::get_current_username() {
-        Some(u) => u,
-        None => return Err("Failed to get current user"),
-    };
+    // If using sudo to run as root, show this
+    if let Ok(u) = env::var("SUDO_USER") {
+        return Ok(["root (", u.as_str(), ")"].join(""));
+    }
 
-    // Get string from OsString
-    if let Some(username_str) = username.to_str() {
-        Ok(username_str.to_string())
-    } else {
-        Err("Failed to get current user")
+    // Get current user from $LOGNAME var
+    match env::var("LOGNAME") {
+        Ok(u) => Ok(u),
+        Err(_) => return Err("Failed to get current user"),
     }
 }
 
