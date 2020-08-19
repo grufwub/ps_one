@@ -10,7 +10,7 @@ use git2::{Repository, StatusOptions, StatusShow};
 const GIT_CLEAN: &'static str = "✓";
 const GIT_DIRTY: &'static str = "✗";
 
-// Terminal color constants
+// Terminal color + style constants
 //const COLOR_BLACK:   &str = "\x1b[30m";
 //const COLOR_RED:     &str = "\x1b[31m";
 //const COLOR_GREEN:   &str = "\x1b[32m";
@@ -19,39 +19,35 @@ const GIT_DIRTY: &'static str = "✗";
 //const COLOR_MAGENTA: &str = "\x1b[35m";
 //const COLOR_CYAN:    &str = "\x1b[36m";
 //const COLOR_WHITE:   &str = "\x1b[37m";
-
 //const COLOR_BRIGHT_BLACK:   &str = "\x1b[30;1m";
-const COLOR_BRIGHT_RED:     &str = "\x1b[31;1m";
-const COLOR_BRIGHT_GREEN:   &str = "\x1b[32;1m";
 //const COLOR_BRIGHT_YELLOW:  &str = "\x1b[33;1m";
-const COLOR_BRIGHT_BLUE:    &str = "\x1b[34;1m";
 //const COLOR_BRIGHT_MAGENTA: &str = "\x1b[35;1m";
 //const COLOR_BRIGHT_CYAN:    &str = "\x1b[36;1m";
 //const COLOR_BRIGHT_WHITE:   &str = "\x1b[37;1m";
-
-// Terminal style constants
-const STYLE_BOLD:       &str = "\x1b[1m";
 //const STYLE_UNDERLINED: &str = "\x1b[4m";
 //const STYLE_REVERSED:   &str = "\x1b[7m";
 
-// Terminal reset
-const RESET: &str = "\x1b[0m";
+const COLOR_BRIGHT_RED:   &str = "\x1b[31;1m";
+const COLOR_BRIGHT_GREEN: &str = "\x1b[32;1m";
+const COLOR_BRIGHT_BLUE:  &str = "\x1b[34;1m";
+const STYLE_BOLD:         &str = "\x1b[1m";
+const RESET:              &str = "\x1b[0m";
 
-// PS1 format username
+// PS1 format username: {color}{style}{name}{reset}
 macro_rules! format_name {
     ($name:expr) => {
         [COLOR_BRIGHT_GREEN, STYLE_BOLD, $name, RESET].join("")
     };
 }
 
-// PS1 format current working directory
+// PS1 format current working directory: {color}{style}{directory}{reset}
 macro_rules! format_cwd {
     ($cwd:expr) => {
         [COLOR_BRIGHT_BLUE, STYLE_BOLD, $cwd, RESET].join("")
     };
 }
 
-// PS1 format git branch name
+// PS1 format git branch name: {color}{style}{[remote: ]?name}{reset}
 macro_rules! format_branch {
     ($is_remote:expr, $name:expr) => {
         if $is_remote {
@@ -62,7 +58,7 @@ macro_rules! format_branch {
     };
 }
 
-// PS1 format git status string
+// PS1 format git status string: {color}{style}{status_symbol}{reset}
 macro_rules! format_status {
     ($dirty:expr) => {
         if $dirty == true {
@@ -88,13 +84,6 @@ fn get_username<'a>() -> Result<String, &'a str> {
     }
 }
 
-fn get_username_backup() -> String {
-    match env::var("USER") {
-        Ok(name) => name,
-        Err(_) => "unknown".to_string(),
-    }
-}
-
 fn get_current_dir<'a>() -> Result<String, &'a str> {
     // Try to get current dir
     let current_dir = match env::current_dir() {
@@ -107,13 +96,6 @@ fn get_current_dir<'a>() -> Result<String, &'a str> {
         Ok(current_dir_str.to_string())
     } else {
         Err("Failed to get current dir")
-    }
-}
-
-fn get_current_dir_backup() -> String {
-    match env::var("PWD") {
-        Ok(pwd) => pwd,
-        Err(_) => "".to_string(),
     }
 }
 
@@ -175,8 +157,8 @@ fn generate_ps1() -> String {
     let username = match get_username() {
         Ok(name) => name,
         Err(err) => {
-            println!("$PS1 ERROR: {}. Using backup method", err);
-            get_username_backup()
+            println!("$PS1 ERROR: {}", err);
+            "unknown_user".to_string()
         },
     };
 
@@ -193,8 +175,8 @@ fn generate_ps1() -> String {
     let curdir_str = match get_current_dir() {
         Ok(cwd)  => cwd,
         Err(err) => {
-            println!("$PS1 ERROR: {}. Using backup method", err);
-            get_current_dir_backup()
+            println!("$PS1 ERROR: {}", err);
+            "".to_string()
         },
     };
 
