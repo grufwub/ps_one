@@ -1,4 +1,3 @@
-extern crate dirs;
 extern crate git2;
 
 use std::env;
@@ -92,17 +91,10 @@ fn get_current_dir<'a>() -> Result<String, &'a str> {
 }
 
 fn get_home_dir<'a>() -> Result<String, &'a str> {
-    // Try get current user's home dir
-    let home_dir = match dirs::home_dir() {
-        Some(h) => h,
-        None => return Err("Failed to get current user's home dir")
-    };
-
-    // Try get string from home dir PathBuf
-    if let Some(home_dir_str) = home_dir.to_str() {
-        Ok(home_dir_str.to_string())
-    } else {
-        Err("Failed to get current user's home dir")
+    // Get current user's home from $HOME
+    match env::var("HOME") {
+        Ok(h) => Ok(h),
+        Err(_) => Err("Failed to get current user's home dir"),
     }
 }
 
