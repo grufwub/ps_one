@@ -150,7 +150,7 @@ fn get_git_status(cwd_str: &str) -> String {
     )
 }
 
-fn generate_ps1() -> String {
+fn print_ps1() {
     // Get the current username
     //let username = get_username()?;
     // Try get current username, else print error and use empty
@@ -184,7 +184,7 @@ fn generate_ps1() -> String {
     let git_str = get_git_status(&curdir_str);
 
     // Return the formatted PS1 string (remember, git_str could be empty!)
-    format!("{name} @ {cwd}{git}\n--> ",
+    print!("{name} @ {cwd}{git}\n--> ",
         name = format_name!(&username),
         cwd  = format_cwd!(&curdir_str.replace(&homedir_str, "~")),
         git  = git_str,
@@ -192,6 +192,6 @@ fn generate_ps1() -> String {
 }
 
 fn main() {
-    print!("{}", generate_ps1());
+    print_ps1();
     process::exit(0);
 }
