@@ -69,11 +69,6 @@ macro_rules! format_status {
 }
 
 fn get_username<'a>() -> Result<String, &'a str> {
-    // If using sudo to run as root, show this
-    if let Ok(u) = env::var("SUDO_USER") {
-        return Ok(["root (", u.as_str(), ")"].join(""));
-    }
-
     // Get current user from $LOGNAME var
     match env::var("LOGNAME") {
         Ok(u) => Ok(u),
