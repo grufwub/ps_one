@@ -1,137 +1,170 @@
 extern crate dirs;
 extern crate git2;
 extern crate users;
-extern crate termion;
 
 use std::env;
 use std::process;
 use git2::{Repository, StatusOptions, StatusShow};
-use termion::{color, style};
 
 // Git status strings
 const GIT_CLEAN: &'static str = "✓";
 const GIT_DIRTY: &'static str = "✗";
 
-// PS1 formatting colors
-const NAME_COLOR:         color::Fg<color::LightGreen> = color::Fg(color::LightGreen);
-const CWD_COLOR:          color::Fg<color::LightBlue>  = color::Fg(color::LightBlue);
-const BRANCH_COLOR:       color::Fg<color::LightRed>   = color::Fg(color::LightRed);
-const STATUS_DIRTY_COLOR: color::Fg<color::LightRed>   = color::Fg(color::LightRed);
-const STATUS_CLEAN_COLOR: color::Fg<color::LightGreen> = color::Fg(color::LightGreen);
+// Terminal color constants
+//const COLOR_BLACK:   &str = "\x1b[30m";
+//const COLOR_RED:     &str = "\x1b[31m";
+//const COLOR_GREEN:   &str = "\x1b[32m";
+//const COLOR_YELLOW:  &str = "\x1b[33m";
+//const COLOR_BLUE:    &str = "\x1b[34m";
+//const COLOR_MAGENTA: &str = "\x1b[35m";
+//const COLOR_CYAN:    &str = "\x1b[36m";
+//const COLOR_WHITE:   &str = "\x1b[37m";
 
-// PS1 formatting styles
-const NAME_STYLE:   style::Bold = style::Bold;
-const CWD_STYLE:    style::Bold = style::Bold;
-const BRANCH_STYLE: style::Bold = style::Bold;
-const STATUS_STYLE: style::Bold = style::Bold;
+//const COLOR_BRIGHT_BLACK:   &str = "\x1b[30;1m";
+const COLOR_BRIGHT_RED:     &str = "\x1b[31;1m";
+const COLOR_BRIGHT_GREEN:   &str = "\x1b[32;1m";
+//const COLOR_BRIGHT_YELLOW:  &str = "\x1b[33;1m";
+const COLOR_BRIGHT_BLUE:    &str = "\x1b[34;1m";
+//const COLOR_BRIGHT_MAGENTA: &str = "\x1b[35;1m";
+//const COLOR_BRIGHT_CYAN:    &str = "\x1b[36;1m";
+//const COLOR_BRIGHT_WHITE:   &str = "\x1b[37;1m";
 
-fn get_username() -> Result<String, String> {
+// Terminal style constants
+const STYLE_BOLD:       &str = "\x1b[1m";
+//const STYLE_UNDERLINED: &str = "\x1b[4m";
+//const STYLE_REVERSED:   &str = "\x1b[7m";
+
+// Terminal reset
+const RESET: &str = "\x1b[0m";
+
+// PS1 format username
+macro_rules! format_name {
+    ($name:expr) => {
+        [COLOR_BRIGHT_GREEN, STYLE_BOLD, $name, RESET].join("")
+    };
+}
+
+// PS1 format current working directory
+macro_rules! format_cwd {
+    ($cwd:expr) => {
+        [COLOR_BRIGHT_BLUE, STYLE_BOLD, $cwd, RESET].join("")
+    };
+}
+
+// PS1 format git branch name
+macro_rules! format_branch {
+    ($is_remote:expr, $name:expr) => {
+        if $is_remote {
+            [COLOR_BRIGHT_RED, STYLE_BOLD, "remote: ", $name, RESET].join("")
+        } else {
+            [COLOR_BRIGHT_RED, STYLE_BOLD, $name, RESET].join("")
+        }
+    };
+}
+
+// PS1 format git status string
+macro_rules! format_status {
+    ($dirty:expr) => {
+        if $dirty == true {
+            [COLOR_BRIGHT_RED, STYLE_BOLD, GIT_DIRTY, RESET].join("")
+        } else {
+            [COLOR_BRIGHT_GREEN, STYLE_BOLD, GIT_CLEAN, RESET].join("")
+        }
+    };
+}
+
+fn get_username<'a>() -> Result<String, &'a str> {
     // Get username OsString
     let username = match users::get_current_username() {
         Some(u) => u,
-        None => return Err(String::from("Failed to get current user")),
+        None => return Err("Failed to get current user"),
     };
 
     // Get string from OsString
     if let Some(username_str) = username.to_str() {
         Ok(username_str.to_string())
     } else {
-        Err(String::from("Failed to get current user"))
+        Err("Failed to get current user")
     }
 }
 
 fn get_username_backup() -> String {
     match env::var("USER") {
         Ok(name) => name,
-        Err(_)           => "unknown".to_string(),
+        Err(_) => "unknown".to_string(),
     }
 }
 
-fn get_current_dir() -> Result<String, String> {
+fn get_current_dir<'a>() -> Result<String, &'a str> {
     // Try to get current dir
     let current_dir = match env::current_dir() {
         Ok(c) => c,
-        Err(_) => return Err(String::from("Failed to get current dir")),
+        Err(_) => return Err("Failed to get current dir"),
     };
 
     // Try get string from current dir PathBuf
     if let Some(current_dir_str) = current_dir.to_str() {
         Ok(current_dir_str.to_string())
     } else {
-        Err(String::from("Failed to get current dir"))
+        Err("Failed to get current dir")
     }
 }
 
 fn get_current_dir_backup() -> String {
     match env::var("PWD") {
         Ok(pwd) => pwd,
-        Err(_)          => "".to_string(),
+        Err(_) => "".to_string(),
     }
 }
 
-fn get_home_dir() -> Result<String, String> {
+fn get_home_dir<'a>() -> Result<String, &'a str> {
     // Try get current user's home dir
     let home_dir = match dirs::home_dir() {
         Some(h) => h,
-        None => return Err(String::from("Failed to get current user's home dir"))
+        None => return Err("Failed to get current user's home dir")
     };
 
     // Try get string from home dir PathBuf
     if let Some(home_dir_str) = home_dir.to_str() {
         Ok(home_dir_str.to_string())
     } else {
-        Err(String::from("Failed to get current user's home dir"))
+        Err("Failed to get current user's home dir")
     }
 }
 
-fn get_git_status(cwd_str: &str) -> Option<String> {
+fn get_git_status(cwd_str: &str) -> String {
     // Try open the repo at current directory
     let repo = match Repository::discover(cwd_str) {
         Ok(r) => r,
-        Err(_) => return None,
+        Err(_) => return "".to_string(),
     };
 
     // Try get the head from the repo
     let head = match repo.head() {
         Ok(h) => h,
-        Err(_) => return None,
+        Err(_) => return "".to_string(),
     };
 
-    // Create the git branch name string
-    let mut name_str = String::new();
-
-    // If remote, set prefix
-    if head.is_remote() {
-        name_str.push_str("remote: ");
-    }
-
-    // Add the head's name (formatted)
-    name_str.push_str(&head.name()?.replace("refs/heads/", ""));
+    // Try get head name, else return empty
+    let name_str = if let Some(name) = head.name() {
+        name.replace("refs/heads/", "")
+    } else {
+        return "".to_string()
+    };
 
     // Get the current repository state iterator
     let statuses = match repo.statuses(Some(StatusOptions::default().show(StatusShow::Workdir).include_untracked(true).include_ignored(false).no_refresh(true))) {
         Ok(s) => s,
-        Err(_) => return None,
+        Err(_) => return "".to_string(),
     };
 
-    // Create the git status string --> non-zero statuses length means we are ~DIRTY~
-    let mut status_str = String::new();
-    if statuses.len() > 0 {
-        status_str.push_str(&format!("{}{}", STATUS_DIRTY_COLOR, STATUS_STYLE));
-        status_str.push_str(&GIT_DIRTY);
-    } else {
-        status_str.push_str(&format!("{}{}", STATUS_CLEAN_COLOR, STATUS_STYLE));
-        status_str.push_str(&GIT_CLEAN);
-    }
+    // Are we clean? ... or diwrty OwO 
+    let is_dirty = statuses.len() > 0;
 
     // Return formatted git status string
-    Some(
-        format!(" : {branch_fmt}{branch}{reset_fmt} {status}{reset_fmt}",
-            branch_fmt = format!("{}{}", BRANCH_COLOR, BRANCH_STYLE),
-            branch     = name_str,
-            status     = status_str,
-            reset_fmt  = format!("{}{}", color::Fg(color::Reset), style::Reset),
-        )
+    format!(" : {branch} {status}",
+        branch = format_branch!(head.is_remote(), &name_str),
+        status = format_status!(is_dirty),
     )
 }
 
@@ -157,7 +190,7 @@ fn generate_ps1() -> String {
     };
 
     // Try get current directory, else print the error and use backup method
-    let mut curdir_str = match get_current_dir() {
+    let curdir_str = match get_current_dir() {
         Ok(cwd)  => cwd,
         Err(err) => {
             println!("$PS1 ERROR: {}. Using backup method", err);
@@ -165,23 +198,14 @@ fn generate_ps1() -> String {
         },
     };
 
-    // If the current directory is a git repository, get a git status string
-    let mut git_str = String::new();
-    if let Some(git_status) = get_git_status(&curdir_str) {
-        git_str.push_str(&git_status);
-    }
-
-    // Format the current directory to shorten $HOME --> ~
-    curdir_str = curdir_str.replace(&homedir_str, "~");
+    // Try get the git status string (if PWD != git repo then will be empty)
+    let git_str = get_git_status(&curdir_str);
 
     // Return the formatted PS1 string (remember, git_str could be empty!)
-    format!("{name_fmt}{name}{reset_fmt} @ {cwd_fmt}{cwd}{reset_fmt}{git_str}\n--> ",
-        name_fmt  = format!("{}{}", NAME_COLOR, NAME_STYLE),
-        name      = username,
-        cwd       = curdir_str,
-        cwd_fmt   = format!("{}{}", CWD_COLOR, CWD_STYLE),
-        git_str   = git_str,
-        reset_fmt = format!("{}{}", color::Fg(color::Reset), style::Reset),
+    format!("{name} @ {cwd}{git}\n--> ",
+        name = format_name!(&username),
+        cwd  = format_cwd!(&curdir_str.replace(&homedir_str, "~")),
+        git  = git_str,
     )
 }
 
