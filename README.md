@@ -5,6 +5,8 @@ Simply add to your to your `.bashrc`/`.mkshrc`/`whatever`:
 export PS1='$(ps_one)'
 ```
 
+Unix-like only!
+
 Pros:
 
 - small
