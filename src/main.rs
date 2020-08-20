@@ -135,8 +135,6 @@ fn get_git_status(cwd_str: &str) -> String {
 }
 
 fn print_ps1() {
-    // Get the current username
-    //let username = get_username()?;
     // Try get current username, else print error and use empty
     let username = match get_username() {
         Ok(name) => name,
